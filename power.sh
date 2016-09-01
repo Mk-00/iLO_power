@@ -22,11 +22,11 @@ usage() {
 }
 
 power_on() {
-  perl ${LOCFG} -s ${1} -f ${POWER_ON} -u ${ILO_USER} -p ${ILO_PASS} &>> ./power.log || { echo "ERROR: running locfg.pl failed"; exit 1 ; }
+  perl ${LOCFG} -s ${1} -f ${POWER_ON} -u ${ILO_USER} -p ${ILO_PASS} >> ./power.log 2>&1 || { echo "ERROR: locfg.pl script failed"; exit 1 ; }
 }
 
 power_off() {
-  perl ${LOCFG} -s ${1} -f ${POWER_OFF} -u ${ILO_USER} -p ${ILO_PASS} &>> ./power.log || { echo "ERROR: running locfg.pl failed"; exit 1 ; }
+  perl ${LOCFG} -s ${1} -f ${POWER_OFF} -u ${ILO_USER} -p ${ILO_PASS} >> ./power.log 2>&1 || { echo "ERROR: locfg.pl script failed"; exit 1 ; }
 }
 
 power_status() {
@@ -44,7 +44,15 @@ labpower() {
 
     if [[ "$1" == "status" ]]; then
       for i in $(cat ./${2}.txt); do
-        STATUS=$(power_status $i) || { echo "ERROR: running locfg.pl failed"; exit 1 ; }
+        if [[ "$i" =~ ^USER.* ]]; then
+          ILO_USER=$(awk -F '=' '{print $2}' <<< ${i})
+          continue
+        fi
+        if [[ "$i" =~ ^PASS.* ]]; then
+          ILO_PASS=$(awk -F '=' '{print $2}' <<< ${i})
+          continue
+        fi
+        STATUS=$(power_status $i) || { echo "ERROR: locfg.pl script failed"; exit 1 ; }
         echo -n "Power status of host ${j} (ILO ${i}) is    "
         if [[ ${STATUS} == "ON" ]]; then
           echo -e "[${GREEN}${STATUS}${NO_COLOUR}]"
@@ -57,6 +65,14 @@ labpower() {
       done
     else
       for i in $(cat ./${2}.txt); do
+        if [[ "$i" =~ ^USER.* ]]; then
+          ILO_USER=$(awk -F '=' '{print $2}' <<< ${i})
+          continue
+        fi
+        if [[ "$i" =~ ^PASS.* ]]; then
+          ILO_PASS=$(awk -F '=' '{print $2}' <<< ${i})
+          continue
+        fi
         echo "Powering ${1} host ${j} through ILO (${i})"
         power_$1 $i
         ((j++))
